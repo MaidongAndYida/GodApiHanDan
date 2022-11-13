@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>来时的路</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"/>
+    <link rel="stylesheet" href="https://cache.amap.com/lbs/static/main1119.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <style type="text/css">
+        #panel {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 120px;
+            right: 10px;
+            width: 180px;
+        }
+        #myPageTop {
+            position: absolute;
+            background-color: white;
+            max-height: 90%;
+            overflow-y: auto;
+            top: 10px;
+            right: 0px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<div id="myPageTop">
+    <table>
+        <tr>
+            <td>
+                <label>多个关键字用,号隔开</label>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input id="tipinput" onkeydown="EnterKey()"/>
+            </td>
+        </tr>
+    </table>
+</div>
+<div id="panel"></div>
+<script type="text/javascript">
+    window._AMapSecurityConfig = {
+        securityJsCode:'5cb439b109278721dcfc0f9518f3bca3',
+    }
+</script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=ef8173111f204bda327b798682994086&plugin=AMap.MouseTool,AMap.DistrictSearch"></script>
+<script type="text/javascript">
+    var enterMap = null;
+    var lastPlaceSearch = null;
+    function EnterKey(event){
+        event = event || window.event;
+        if (event.keyCode == 13) {
+            if(null != lastPlaceSearch){
+                //lastPlaceSearch.clear();
+            }
+            //添加搜索输入框
+            AMap.plugin(['AMap.PlaceSearch','AMap.AutoComplete'], function(){
+                var placeSearch = new AMap.PlaceSearch({
+                    pageSize: 5, // 单页显示结果条数
+                    pageIndex: 1, // 页码
+                    city: "0310", // 兴趣点城市
+                    citylimit: true,  //是否强制限制在设置的城市内搜索
+                    map: enterMap, // 展现结果的地图实例
+                    panel: "panel", // 结果列表将在此容器中进行展示。
+                    autoFitView: false // 是否自动调整地图视野使绘制的 Marker点都处于视口的可见范围
+                });  //构造地点查询类
+                var tip = document.getElementById("tipinput").value;
+                tip = tip.replace(',','，').replace('，','|');
+                lastPlaceSearch = placeSearch;
+                placeSearch.search(tip);  //关键字查询查询
+            });
+        }
+    }
+
+    var lnglat = new AMap.LngLat(114.500000,36.694985);
+
+    var opts = {
+        subdistrict: 0,
+        extensions: 'all',
+        level: 'city'
+    };
+    //利用行政区查询获取边界构建mask路径
+    //也可以直接通过经纬度构建mask路径
+    var district = new AMap.DistrictSearch(opts);
+    district.search('邯郸市', function(status, result) {
+        var bounds = result.districtList[0].boundaries;
+        var mask = []
+        for(var i =0;i<bounds.length;i+=1){
+            mask.push([bounds[i]])
+        }
+        var map = new AMap.Map('container', {
+            mask:mask,
+            center:[114.500000,36.694985],
+            viewMode:'2D',
+            labelzIndex:130,
+            pitch:40,
+            zoom:9,
+            layers:[
+                new AMap.createDefaultLayer({
+                    //rejectMapMask:true
+                })
+            ]
+        });
+        //添加描边
+        for(var i =0;i<bounds.length;i+=1){
+            new AMap.Polyline({
+                path:bounds[i],
+                strokeColor:'#000000',
+                strokeWeight:4,
+                map:map
+            })
+        }
+
+
+        //开始创建右键菜单
+        var contextMenu = new AMap.ContextMenu();
+        var mouseTool = new AMap.MouseTool(map);
+        //右键放大
+        contextMenu.addItem("放大一级", function () {
+            mouseTool.close();
+            map.zoomIn();
+        }, 0);
+        //右键缩小
+        contextMenu.addItem("缩小一级", function () {
+            mouseTool.close();
+            map.zoomOut();
+        }, 1);
+        //测量距离
+        contextMenu.addItem("测量距离", function (e) {
+            document.getElementsByClassName("amap-menu")[0].style.display="none";
+            mouseTool.rule();
+        }, 2);
+        //右键添加Marker标记
+        contextMenu.addItem("添加标记", function (e) {
+            mouseTool.close();
+            var marker = new AMap.Marker({
+                map: map,
+                position: contextMenuPositon //基点位置
+            });
+        }, 3);
+        //地图绑定鼠标右击事件——弹出右键菜单
+        map.on('rightclick', function (e) {
+            contextMenu.open(map, e.lnglat);
+            contextMenuPositon = e.lnglat;
+        });
+        contextMenu.open(map, lnglat);
+        document.getElementsByClassName("amap-menu")[0].style.display="none";
+
+        var autoOptions = {
+            input: "tipinput"
+        };
+        AMap.plugin(['AMap.PlaceSearch','AMap.AutoComplete'], function(){
+            var auto = new AMap.AutoComplete(autoOptions);
+            var placeSearch = new AMap.PlaceSearch({
+                pageSize: 5, // 单页显示结果条数
+                pageIndex: 1, // 页码
+                city: "0310", // 兴趣点城市
+                citylimit: true,  //是否强制限制在设置的城市内搜索
+                map: enterMap, // 展现结果的地图实例
+                panel: "panel", // 结果列表将在此容器中进行展示。
+                autoFitView: false // 是否自动调整地图视野使绘制的 Marker点都处于视口的可见范围
+            });  //构造地点查询类
+        });
+        enterMap = map;
+    });
+</script>
+</body>
+</html>

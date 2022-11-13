@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>默认样式</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<div id="tip" class="info">地图上右击鼠标，弹出自定义样式的右键菜单</div>
+<script type="text/javascript">
+    window._AMapSecurityConfig = {
+        securityJsCode:'5cb439b109278721dcfc0f9518f3bca3',
+    }
+</script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=ef8173111f204bda327b798682994086&plugin=AMap.MouseTool,AMap.DistrictSearch"></script>
+<script type="text/javascript">
+    var lnglat = new AMap.LngLat(114.500000,36.694985);
+
+    var opts = {
+        subdistrict: 0,
+        extensions: 'all',
+        level: 'city'
+    };
+    //利用行政区查询获取边界构建mask路径
+    //也可以直接通过经纬度构建mask路径
+    var district = new AMap.DistrictSearch(opts);
+    district.search('邯郸市', function(status, result) {
+        var bounds = result.districtList[0].boundaries;
+        var mask = []
+        for(var i =0;i<bounds.length;i+=1){
+            mask.push([bounds[i]])
+        }
+        var map = new AMap.Map('container', {
+            mask:mask,
+            center:[114.500000,36.694985],
+            viewMode:'2D',
+            labelzIndex:130,
+            pitch:40,
+            zoom:9,
+            layers:[
+                new AMap.createDefaultLayer({
+                    //rejectMapMask:true
+                })
+            ]
+        });
+        //添加描边
+        for(var i =0;i<bounds.length;i+=1){
+            new AMap.Polyline({
+                path:bounds[i],
+                strokeColor:'#99ffff',
+                strokeWeight:4,
+                map:map
+            })
+        }
+
+
+        //创建右键菜单
+        var contextMenu = new AMap.ContextMenu();
+
+        //右键放大
+        contextMenu.addItem("放大一级", function () {
+            map.zoomIn();
+        }, 0);
+
+        //右键缩小
+        contextMenu.addItem("缩小一级", function () {
+            map.zoomOut();
+        }, 1);
+
+        //右键显示全国范围
+        contextMenu.addItem("测量距离", function (e) {
+            this.mouseTool = new AMap.MouseTool(map);
+            this.mouseTool.rule();
+        }, 2);
+
+        //右键添加Marker标记
+        contextMenu.addItem("添加标记", function (e) {
+            var marker = new AMap.Marker({
+                map: map,
+                position: contextMenuPositon //基点位置
+            });
+        }, 3);
+
+
+        //右键显示全国范围
+        contextMenu.addItem("缩放至全国范围", function (e) {
+            map.setZoomAndCenter(4, [108.946609, 34.262324]);
+        }, 4);
+
+
+        //地图绑定鼠标右击事件——弹出右键菜单
+        map.on('rightclick', function (e) {
+            contextMenu.open(map, e.lnglat);
+            contextMenuPositon = e.lnglat;
+        });
+
+        contextMenu.open(map, lnglat);
+    });
+
+</script>
+</body>
+</html>
